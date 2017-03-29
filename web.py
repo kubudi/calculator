@@ -44,7 +44,7 @@ def unsupported(error=None):
     return resp
 
 
-@app.route("/sum", methods=['POST'])
+@app.route("/calculator", methods=['POST'])
 def sum():
     json = request.get_json()
     if json:
@@ -59,4 +59,4 @@ def sum():
         return "nok"
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
