@@ -3,6 +3,7 @@ from flask import Flask
 from flask import request
 from flask import jsonify
 
+import math
 import os
 
 
@@ -14,23 +15,44 @@ class UnsupportedOperation(Exception):
         self.op = op
 
 
+class WrongParameters(Exception):
+    pass
+
+
 def handle(json):
     op = json['operation']
     print("opreation: {}".format(op))
 
-    val1 = json['val1']
-    val2 = json['val2']
+    val1 = json.get('val1')
+    val2 = json.get('val2')
     print("val1: {}".format(val1))
     print("val2: {}".format(val2))
 
     if op == 'plus':
-        return val1 + val2
+        if val1 and val2:
+            return val1 + val2
+        else:
+            raise WrongParameters()
     elif op == 'minus':
-        return val1 - val2
+        if val1 and val2:
+            return val1 - val2
+        else:
+            raise WrongParameters()
     elif op == 'times':
-        return val1 * val2
+        if val1 and val2:
+            return val1 * val2
+        else:
+            raise WrongParameters()
     elif op == 'divide':
-        return val1 / val2
+        if val1 and val2 is not None:
+            return val1 / val2
+        else:
+            raise WrongParameters()
+    elif op == 'factorial':
+        if val1:
+            return math.factorial(val1)
+        else:
+            raise WrongParameters()
     else:
         raise UnsupportedOperation(op)
 
@@ -46,6 +68,24 @@ def unsupported(error=None):
     return resp
 
 
+@app.errorhandler(400)
+def wrong_params():
+    message = {'message': 'Wrong number of parameters provided.'}
+    resp = jsonify(message)
+    resp.status_code = 400
+
+    return resp
+
+
+@app.errorhandler(500)
+def internal():
+    message = {'message': 'Internal server error'}
+    resp = jsonify(message)
+    resp.status_code = 500
+
+    return resp
+
+
 @app.route("/calculator", methods=['POST'])
 def sum():
     json = request.get_json()
@@ -55,10 +95,34 @@ def sum():
             res = handle(json)
         except UnsupportedOperation as e:
             return unsupported(e)
-        print(res)
+        except WrongParameters:
+            return wrong_params()
+        except Exception:
+            return internal()
+
+        print('Result: {}'.format(res))
         return jsonify(res)
     else:
         return "nok"
+
+
+@app.route("/", methods=['GET'])
+def docs():
+    ops = {
+        'Addition': 'plus',
+        'Substraction': 'minus',
+        'Multiplication': 'times',
+        'Divison': 'divide',
+        'Factorial': 'factorial',
+    }
+
+    res = {
+        'description': "A simple calculator at your service",
+        'url': '/calculator',
+        'operations': ops,
+        'example request': {'operation': 'plus', 'val1': 3, 'val2': 4}
+    }
+    return jsonify(res)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
